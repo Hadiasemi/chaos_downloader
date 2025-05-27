@@ -36,7 +36,8 @@ DESCRIPTION:
 
 Ensure Go is installed on your system to run this script.
 - - -
-### Steps
+### First Way:
+#### Steps
 
 1. Clone this repository:
 
@@ -54,6 +55,10 @@ cd chaos_downloader
 
 ```
 go run chaos_downloader.go
+```
+### Second Way:
+```bash
+go install github.com/Hadiasemi/chaos_downloader@latest
 ```
 
 The script downloads ZIP files listed in https://chaos-data.projectdiscovery.io/index.json, extracts them into named directories, and compiles text from those directories into a single file named `everything.txt`.
