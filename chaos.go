@@ -11,12 +11,56 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+
 	"strings"
 )
 
+func usage() {
+	progName := filepath.Base(os.Args[0])
+	fmt.Fprintf(os.Stderr, `Chaos Data Downloader - Download and process company data from Project Discovery
+
+USAGE:
+    %s [OPTIONS]
+
+OPTIONS:
+    -c string    Comma-separated list of company names to download
+                 Example: -c "Tesla,Google,Microsoft"
+    -i string    Path to file containing company names (one per line)
+    -a           Download all available companies
+    -h           Show this help message
+
+EXAMPLES:
+    # Download specific companies
+    %s -c Tesla
+    %s -c "Tesla,Google,Microsoft"
+    
+    # Download companies from file
+    %s -i companies.txt
+    
+    # Download all available companies
+    %s -a
+
+DESCRIPTION:
+    This tool downloads chaos data from Project Discovery for specified companies.
+    Downloaded data is extracted to ./AllChaosData/ and all .txt files are 
+    concatenated into everything.txt in the current directory.
+
+`, progName, progName, progName, progName, progName)
+}
+
 func main() {
-	inputFile := flag.String("i", "", "Optional: Path to file containing company names (one per line)")
+	inputFile := flag.String("i", "", "Path to file containing company names (one per line)")
+	companies := flag.String("c", "", "Comma-separated list of company names to download (e.g., 'Tesla,Google,Microsoft')")
+	all := flag.Bool("a", false, "Download all available companies")
+	help := flag.Bool("h", false, "Show usage information")
+	flag.Usage = usage
 	flag.Parse()
+
+	// Show usage if no arguments provided or help requested
+	if *help || (*inputFile == "" && *companies == "" && !*all) {
+		flag.Usage()
+		return
+	}
 
 	baseDir := filepath.Join(".", "AllChaosData")
 	if err := os.MkdirAll(baseDir, os.ModePerm); err != nil {
@@ -24,12 +68,19 @@ func main() {
 	}
 
 	var companySet map[string]struct{}
-	if *inputFile != "" {
-		var err error
+	var err error
+
+	if *companies != "" {
+		companySet = parseCompanyNames(*companies)
+		fmt.Printf("Selected companies: %v\n", getCompanyNames(companySet))
+	} else if *inputFile != "" {
 		companySet, err = readCompanyList(*inputFile)
 		if err != nil {
 			log.Fatalf("Failed to read input file: %v", err)
 		}
+	} else if *all {
+		// companySet remains nil to download all companies
+		fmt.Println("Downloading all available companies...")
 	}
 
 	jsonURL := "https://chaos-data.projectdiscovery.io/index.json"
@@ -40,6 +91,28 @@ func main() {
 	if err := concatenateAllTxtFiles(baseDir, "."); err != nil {
 		log.Fatalf("Failed to concatenate all txt files: %v", err)
 	}
+}
+
+func parseCompanyNames(input string) map[string]struct{} {
+	companies := make(map[string]struct{})
+	names := strings.Split(input, ",")
+
+	for _, name := range names {
+		trimmed := strings.TrimSpace(name)
+		if trimmed != "" {
+			companies[strings.ToLower(trimmed)] = struct{}{}
+		}
+	}
+
+	return companies
+}
+
+func getCompanyNames(companySet map[string]struct{}) []string {
+	var names []string
+	for name := range companySet {
+		names = append(names, name)
+	}
+	return names
 }
 
 func readCompanyList(path string) (map[string]struct{}, error) {
@@ -75,6 +148,7 @@ func processURLs(jsonURL, baseDir string, filterSet map[string]struct{}) error {
 		return fmt.Errorf("error decoding JSON index: %w", err)
 	}
 
+	processedCount := 0
 	for _, entry := range entries {
 		if filterSet != nil {
 			if _, ok := filterSet[strings.ToLower(entry.Name)]; !ok {
@@ -84,8 +158,12 @@ func processURLs(jsonURL, baseDir string, filterSet map[string]struct{}) error {
 		fmt.Printf("Processing %s...\n", entry.Name)
 		if err := downloadAndUnzip(entry.URL, entry.Name, baseDir); err != nil {
 			log.Printf("Failed to process %s: %v\n", entry.Name, err)
+		} else {
+			processedCount++
 		}
 	}
+
+	fmt.Printf("\nCompleted processing %d companies.\n", processedCount)
 	return nil
 }
 
@@ -208,4 +286,3 @@ func findAllTxtFiles(root string) []string {
 	})
 	return files
 }
-

@@ -1,6 +1,36 @@
 # Chaos Downloader
 
 A simple tool to download, organize, and consolidate data from Project Discovery's Chaos dataset.
+```bash
+
+Chaos Data Downloader - Download and process company data from Project Discovery
+
+USAGE:
+    chaos_downloader [OPTIONS]
+
+OPTIONS:
+    -c string    Comma-separated list of company names to download
+                 Example: -c "Tesla,Google,Microsoft"
+    -i string    Path to file containing company names (one per line)
+    -a           Download all available companies
+    -h           Show this help message
+
+EXAMPLES:
+    # Download specific companies
+    chaos_downloader -c Tesla
+    chaos_downloader -c "Tesla,Google,Microsoft"
+
+    # Download companies from file
+    chaos_downloader -i companies.txt
+
+    # Download all available companies
+    chaos_downloader -a
+
+DESCRIPTION:
+    This tool downloads chaos data from Project Discovery for specified companies.
+    Downloaded data is extracted to ./AllChaosData/ and all .txt files are
+    concatenated into everything.txt in the current directory.
+```
 - - -
 ## Getting Started
 
